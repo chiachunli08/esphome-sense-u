@@ -1,0 +1,62 @@
+# Experimental: SU602 has not been verified with this component on hardware.
+# Put wifi_ssid, wifi_password and senseu_mac_address in your local secrets.yaml.
+# An optional baby_code can also be stored there; never commit secrets.yaml.
+esphome:
+  name: sense-u-pro
+  friendly_name: Sense U Pro
+
+esp32:
+  board: esp32-c3-devkitm-1
+  flash_size: 4MB
+  framework:
+    type: esp-idf
+    version: 5.5.6
+
+external_components:
+  - source: github://chiachunli08/esphome-sense-u@master
+    components: [senseu]
+    refresh: always
+
+logger:
+api:
+ota:
+  - platform: esphome
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+esp32_ble_tracker:
+ble_client:
+  - mac_address: !secret senseu_mac_address
+    id: senseu_ble
+
+senseu:
+  - id: baby_monitor
+    ble_client_id: senseu_ble
+    # Avoid writing F5/B2/B3/B0 settings during connection.
+    preserve_monitoring_settings: true
+    # Optional: baby_code: !secret senseu_baby_code
+
+sensor:
+  - platform: senseu
+    id: baby_monitor
+    breath_rate:
+      name: Sense U Breath Rate
+    temperature:
+      name: Sense U Temperature
+    battery_level:
+      name: Sense U Battery Level
+
+text_sensor:
+  - platform: senseu
+    id: baby_monitor
+    posture:
+      name: Sense U Posture
+    status:
+      name: Sense U Status
+
+binary_sensor:
+  - platform: senseu
+    id: baby_monitor
+    connected:
+      name: Sense U BLE Connected

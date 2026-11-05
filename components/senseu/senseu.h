@@ -62,6 +62,7 @@ class SenseU : public esphome::ble_client::BLEClientNode, public Component {
   void set_battery_alarm(binary_sensor::BinarySensor *battery_alarm) { battery_alarm_ = battery_alarm; }
   void set_connected_sensor(binary_sensor::BinarySensor *connected_sensor) { connected_sensor_ = connected_sensor; }
   void set_power_switch(bool state);
+  void set_preserve_monitoring_settings(bool preserve) { preserve_monitoring_settings_ = preserve; }
   void set_baby_code(std::string baby_code) { baby_code_ = baby_code; }
 
  private:
@@ -88,6 +89,7 @@ class SenseU : public esphome::ble_client::BLEClientNode, public Component {
   uint16_t char_handle_4_;
   uint16_t cccd_4_;
   bool power_state_{true};
+  bool preserve_monitoring_settings_{false};
   sensor::Sensor *breath_rate_{nullptr};
   sensor::Sensor *temperature_{nullptr};
   sensor::Sensor *humidity_{nullptr};

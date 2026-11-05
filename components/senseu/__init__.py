@@ -13,6 +13,7 @@ MULTI_CONF = True
 
 CONF_SENSEU_ID = "senseu_id"
 CONF_BABY_CODE = "baby_code"
+CONF_PRESERVE_MONITORING_SETTINGS = "preserve_monitoring_settings"
 
 senseu_ns = cg.esphome_ns.namespace("senseu")
 senseu = senseu_ns.class_("SenseU", ble_client.BLEClientNode, cg.Component)
@@ -22,6 +23,7 @@ CONFIG_SCHEMA = (
         {
             cv.GenerateID(): cv.declare_id(senseu),
             cv.Optional(CONF_BABY_CODE): cv.string_strict,
+            cv.Optional(CONF_PRESERVE_MONITORING_SETTINGS, default=False): cv.boolean,
             
         }
     )
@@ -34,6 +36,8 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await ble_client.register_ble_node(var, config)
+
+    cg.add(var.set_preserve_monitoring_settings(config[CONF_PRESERVE_MONITORING_SETTINGS]))
 
     if CONF_BABY_CODE in config:
         cg.add(var.set_baby_code(config[CONF_BABY_CODE]))
