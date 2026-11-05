@@ -11,6 +11,10 @@ If you like my work, consider sponsoring this project via [Github Sponsors](http
 The basics are working for this component. However, some functionality might be missing or might be unimplemented. 
 The Base Station 2 is, apart from the temperature sensor, fully supported.
 
+## Baby Pro (SU602)
+
+The [ESP32-C3 example](example-sense-u-pro-esp32c3.yaml) is experimental. Pairing, readings and alarms have not been verified on SU602 hardware. See the [compatibility assessment](SU602-COMPATIBILITY.md) before using it, including the effects and limits of `preserve_monitoring_settings`.
+
 ## Getting started
 
 These steps assume that your Sense-U is **not** paired to an app/the base station. If it is paired, then the pairing is lost. Technically, it is possible to connect the sensor to app/base station and ESPHome, but not at the same time. See section "Sharing baby code".
