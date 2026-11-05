@@ -24,11 +24,11 @@ void SenseU::setup() {
   this->data_char_2_uuid_ = espbt::ESPBTUUID::from_raw(DATA_CHAR_2_PREFIX + addr);
   this->data_char_3_uuid_ = espbt::ESPBTUUID::from_raw(DATA_CHAR_3_PREFIX + addr);
   this->data_char_4_uuid_ = espbt::ESPBTUUID::from_raw(DATA_CHAR_4_PREFIX + addr);
-  ESP_LOGD(TAG, "Base UUID: %s", this->base_service_uuid_.to_string().c_str());
-  ESP_LOGD(TAG, "Data Char 1: %s", this->data_char_1_uuid_.to_string().c_str());
-  ESP_LOGD(TAG, "Data Char 2: %s", this->data_char_2_uuid_.to_string().c_str());
-  ESP_LOGD(TAG, "Data Char 3: %s", this->data_char_3_uuid_.to_string().c_str());
-  ESP_LOGD(TAG, "Data Char 4: %s", this->data_char_4_uuid_.to_string().c_str());
+  ESP_LOGD(TAG, "Base UUID: %s", this->base_service_uuid_.to_str().c_str());
+  ESP_LOGD(TAG, "Data Char 1: %s", this->data_char_1_uuid_.to_str().c_str());
+  ESP_LOGD(TAG, "Data Char 2: %s", this->data_char_2_uuid_.to_str().c_str());
+  ESP_LOGD(TAG, "Data Char 3: %s", this->data_char_3_uuid_.to_str().c_str());
+  ESP_LOGD(TAG, "Data Char 4: %s", this->data_char_4_uuid_.to_str().c_str());
   uint32_t hash = fnv1_hash("senseu_state_" + addr);
   this->pref_ = global_preferences->make_preference<SenseUStorage>(hash, true);
   if(this->pref_.load(&this->pref_storage_)) {
@@ -90,7 +90,7 @@ bool SenseU::discover_characteristics() {
     if(!this->char_handle_1_) {
         chr = this->parent_->get_characteristic(this->base_service_uuid_, this->data_char_1_uuid_);
         if(chr == nullptr) {
-            ESP_LOGE(TAG, "Required data characteristic %s not found.", this->data_char_1_uuid_.to_string().c_str());
+            ESP_LOGE(TAG, "Required data characteristic %s not found.", this->data_char_1_uuid_.to_str().c_str());
             result = false;
         } else {
             this->char_handle_1_ = chr->handle;
@@ -100,7 +100,7 @@ bool SenseU::discover_characteristics() {
     if(!this->char_handle_2_) {
         chr = this->parent_->get_characteristic(this->base_service_uuid_, this->data_char_2_uuid_);
         if(chr == nullptr) {
-            ESP_LOGE(TAG, "Required data characteristic %s not found.", this->data_char_2_uuid_.to_string().c_str());
+            ESP_LOGE(TAG, "Required data characteristic %s not found.", this->data_char_2_uuid_.to_str().c_str());
             result = false;
         } else {
             this->char_handle_2_ = chr->handle;
@@ -110,7 +110,7 @@ bool SenseU::discover_characteristics() {
     if(!this->char_handle_3_) {
         chr = this->parent_->get_characteristic(this->base_service_uuid_, this->data_char_3_uuid_);
         if(chr == nullptr) {
-            ESP_LOGE(TAG, "Required data characteristic %s not found.", this->data_char_3_uuid_.to_string().c_str());
+            ESP_LOGE(TAG, "Required data characteristic %s not found.", this->data_char_3_uuid_.to_str().c_str());
             result = false;
         } else {
             this->char_handle_3_ = chr->handle;
@@ -120,7 +120,7 @@ bool SenseU::discover_characteristics() {
     if(!this->char_handle_4_) {
         chr = this->parent_->get_characteristic(this->base_service_uuid_, this->data_char_4_uuid_);
         if(chr == nullptr) {
-            ESP_LOGE(TAG, "Required data characteristic %s not found.", this->data_char_4_uuid_.to_string().c_str());
+            ESP_LOGE(TAG, "Required data characteristic %s not found.", this->data_char_4_uuid_.to_str().c_str());
             result = false;
         } else {
             this->char_handle_4_ = chr->handle;
@@ -136,7 +136,7 @@ bool SenseU::discover_characteristics() {
         } else if(desc-> uuid.get_uuid().len != ESP_UUID_LEN_16 ||
                   desc->uuid.get_uuid().uuid.uuid16 != ESP_GATT_UUID_CHAR_CLIENT_CONFIG) {
             ESP_LOGW(TAG, "Config descriptor 0x%x (uuid %s) is not a client config char uuid", this->char_handle_1_,
-                  desc->uuid.to_string().c_str());
+                  desc->uuid.to_str().c_str());
             result = false;
         } else {
             this->cccd_1_ = desc->handle;
@@ -152,7 +152,7 @@ bool SenseU::discover_characteristics() {
         } else if(desc-> uuid.get_uuid().len != ESP_UUID_LEN_16 ||
                   desc->uuid.get_uuid().uuid.uuid16 != ESP_GATT_UUID_CHAR_CLIENT_CONFIG) {
             ESP_LOGW(TAG, "Config descriptor 0x%x (uuid %s) is not a client config char uuid", this->char_handle_2_,
-                  desc->uuid.to_string().c_str());
+                  desc->uuid.to_str().c_str());
             result = false;
         } else {
             this->cccd_2_ = desc->handle;
@@ -168,7 +168,7 @@ bool SenseU::discover_characteristics() {
         } else if(desc-> uuid.get_uuid().len != ESP_UUID_LEN_16 ||
                   desc->uuid.get_uuid().uuid.uuid16 != ESP_GATT_UUID_CHAR_CLIENT_CONFIG) {
             ESP_LOGW(TAG, "Config descriptor 0x%x (uuid %s) is not a client config char uuid", this->char_handle_3_,
-                  desc->uuid.to_string().c_str());
+                  desc->uuid.to_str().c_str());
             result = false;
         } else {
             this->cccd_3_ = desc->handle;
@@ -184,7 +184,7 @@ bool SenseU::discover_characteristics() {
         } else if(desc-> uuid.get_uuid().len != ESP_UUID_LEN_16 ||
                   desc->uuid.get_uuid().uuid.uuid16 != ESP_GATT_UUID_CHAR_CLIENT_CONFIG) {
             ESP_LOGW(TAG, "Config descriptor 0x%x (uuid %s) is not a client config char uuid", this->char_handle_4_,
-                  desc->uuid.to_string().c_str());
+                  desc->uuid.to_str().c_str());
             result = false;
         } else {
             this->cccd_4_ = desc->handle;
@@ -198,26 +198,26 @@ void SenseU::enable_notifications() {
       auto status = esp_ble_gattc_register_for_notify(this->parent()->get_gattc_if(),
                                                       this->parent_->get_remote_bda(), this->char_handle_1_);
       if(status) {
-        ESP_LOGW(TAG, "Registering for notification failed on %s", this->data_char_1_uuid_.to_string().c_str());
+        ESP_LOGW(TAG, "Registering for notification failed on %s", this->data_char_1_uuid_.to_str().c_str());
       }
 
       if(this->pref_storage_.paired) {
           status = esp_ble_gattc_register_for_notify(this->parent_->get_gattc_if(),
                                                           this->parent_->get_remote_bda(), this->char_handle_2_);
           if(status) {
-            ESP_LOGW(TAG, "Registering for notification failed on %s", this->data_char_2_uuid_.to_string().c_str());
+            ESP_LOGW(TAG, "Registering for notification failed on %s", this->data_char_2_uuid_.to_str().c_str());
           }
 
           status = esp_ble_gattc_register_for_notify(this->parent_->get_gattc_if(),
                                                           this->parent_->get_remote_bda(), this->char_handle_3_);
           if(status) {
-            ESP_LOGW(TAG, "Registering for notification failed on %s", this->data_char_3_uuid_.to_string().c_str());
+            ESP_LOGW(TAG, "Registering for notification failed on %s", this->data_char_3_uuid_.to_str().c_str());
           }
 
           status = esp_ble_gattc_register_for_notify(this->parent_->get_gattc_if(),
                                                           this->parent_->get_remote_bda(), this->char_handle_4_);
           if(status) {
-            ESP_LOGW(TAG, "Registering for notification failed on %s", this->data_char_4_uuid_.to_string().c_str());
+            ESP_LOGW(TAG, "Registering for notification failed on %s", this->data_char_4_uuid_.to_str().c_str());
           }
       }
 }
