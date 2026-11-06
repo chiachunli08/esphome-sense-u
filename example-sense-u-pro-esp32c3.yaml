@@ -1,62 +1,82 @@
-# Experimental: SU602 has not been verified with this component on hardware.
-# Put wifi_ssid, wifi_password and senseu_mac_address in your local secrets.yaml.
-# An optional baby_code can also be stored there; never commit secrets.yaml.
+# Experimental Baby Pro data support. See SU602-COMPATIBILITY.md.
+# Keep secrets.yaml local; do not erase flash when updating a paired device.
 esphome:
   name: sense-u-pro
-  friendly_name: Sense U Pro
-
+  friendly_name: Sense-U Pro
+  min_version: 2026.10.2
 esp32:
   board: esp32-c3-devkitm-1
-  flash_size: 4MB
   framework:
     type: esp-idf
-    version: 5.5.6
-
 external_components:
   - source: github://chiachunli08/esphome-sense-u@master
     components: [senseu]
     refresh: always
-
 logger:
+  level: DEBUG
 api:
 ota:
   - platform: esphome
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-
 esp32_ble_tracker:
 ble_client:
   - mac_address: !secret senseu_mac_address
     id: senseu_ble
-
 senseu:
-  - id: baby_monitor
+  - id: senseu_device
     ble_client_id: senseu_ble
-    # Avoid writing F5/B2/B3/B0 settings during connection.
+    pro_mode: true
     preserve_monitoring_settings: true
-    # Optional: baby_code: !secret senseu_baby_code
-
+    # Existing flash pairing is reused. Only set this if you already know the code.
+    # baby_code: !secret senseu_baby_code
+    update_interval: 2s
+    data_timeout: 30s
+    connection_timeout: 30s
 sensor:
   - platform: senseu
-    id: baby_monitor
+    id: senseu_device
     breath_rate:
-      name: Sense U Breath Rate
+      name: SenseU Breath Rate
     temperature:
-      name: Sense U Temperature
+      name: SenseU Temperature
+    # Experimental protocol field; verify against your hardware before using.
+    humidity:
+      name: SenseU Humidity
     battery_level:
-      name: Sense U Battery Level
-
-text_sensor:
-  - platform: senseu
-    id: baby_monitor
-    posture:
-      name: Sense U Posture
-    status:
-      name: Sense U Status
-
+      name: SenseU Battery Level
+    activity:
+      name: SenseU Activity
+    signal_strength:
+      name: SenseU Device RSSI
 binary_sensor:
   - platform: senseu
-    id: baby_monitor
+    id: senseu_device
     connected:
-      name: Sense U BLE Connected
+      name: SenseU Connected
+    data_fresh:
+      name: SenseU Data Fresh
+    wearing:
+      name: SenseU Wearing
+    breath:
+      name: SenseU Breath Alarm
+    posture:
+      name: SenseU Posture Alarm
+    temperature:
+      name: SenseU Temperature Alarm
+    battery:
+      name: SenseU Battery Alarm
+text_sensor:
+  - platform: senseu
+    id: senseu_device
+    posture:
+      name: SenseU Posture
+    status:
+      name: SenseU Status
+    charge_status:
+      name: SenseU Charge Status
+switch:
+  - platform: ble_client
+    ble_client_id: senseu_ble
+    name: SenseU BLE Connection

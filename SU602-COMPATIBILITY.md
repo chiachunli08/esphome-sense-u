@@ -1,28 +1,104 @@
-# Sense-U Baby Pro (SU602) compatibility assessment
+# Sense-U Baby Pro (SU602): implementation and validation
 
-This is an assessment, not a claim of hardware support. Neither this component's
-pairing/connection sequence nor its sensor and alarm outputs have been verified
-on an SU602. ESPHome and Home Assistant must not be relied on as the sole means
-of monitoring a child. Keep the device's own monitoring and alerts enabled.
+This is an experimental integration, not a verified infant safety monitor.
+Keep the device's own monitoring and alerts enabled. Compilation and synthetic
+packet tests do not establish measurement accuracy or complete alarm coverage.
 
-The comparison below uses the reverse-engineered [sense-u-ble project](https://github.com/mao-mao-yu/sense-u-ble),
-including `sense_u_ble/protocol.py`, `sense_u_ble/client.py`, and
-`tools/pairing.py` (reviewed at commit `4e8dedb11ee907a5fadace540293dd2491c57422`). It is not a device
-manufacturer's specification.
+## Implemented
 
-| Area | Current component versus Pro reference |
-| --- | --- |
-| GATT | The MAC-derived CHAR_1/2/3/4 prefixes match. The reference uses CHAR_1, CHAR_2 and CHAR_4 for its normal client, and its pairing tool also subscribes to CHAR_3. This component additionally requires a particular service and all four characteristics and descriptors; the reference does not establish that this discovery requirement works on every SU602. |
-| Baby code, `0x69`, `0x68` | Both register the same UID and obtain six code bytes from a successful `0x68` response. This component stores the code in ESPHome preferences or accepts a configured code. Its `0x68` packet is 10 bytes and uses uptime in milliseconds; the reference pairing tool sends 18 bytes with Unix seconds. Compatibility remains unverified. |
-| `0x70` | Both send the six-byte code, but this component sends 15 bytes and uses uptime in milliseconds; the reference sends 18 bytes and Unix seconds. SU602 authentication is unverified. |
-| `0xC0` | Both issue a 20-byte `0xC0 01` GET_BATCH after successful authentication. |
-| `0xF5`, `0xB2`, `0xB3`, `0xB0` | The original component writes `F5 F2` after `0xC0`, then on first configuration writes fixed temperature, activity and breath alarm values. The reference uses `F5 F0`, explicitly disabling a prone-alert bit, followed by fixed alarm settings. These writes affect monitoring: with `preserve_monitoring_settings: true`, this component skips its F5/B2/B3/B0 chain, including the F5 commands from its power switch. It still sends `0x68` during pairing and `0xC0` after authentication; their complete effects have not been independently verified. Whether the Pro works without the settings chain is unknown. Existing configurations retain their prior behavior unless they enable this option. |
-| `0xBA` | The reference polls CHAR_4 with a 20-byte request and documents posture, temperature, humidity, breath and battery offsets in the response. This component neither sends nor decodes `0xBA`. Humidity is therefore omitted from the Pro example: the reference describes a field, but the measurement and availability have not been independently confirmed. |
-| `0xF6` | The reference allows a consumer to request an alert ACK; this component does not send `0xF6`. No automatic ACK has been added. |
-| Alerts | Existing record decoding recognizes posture mode 2 and breath modes 8/9. The reference describes modes 10 and 65 as combined prone/weak-breath events. This component does not decode those combined modes, and its alarm binary sensors are reset on disconnect. They cannot be treated as a complete or reliable SU602 alarm indication. The Pro example deliberately leaves them out. |
+Enable `pro_mode: true` in the [C3 example](example-sense-u-pro-esp32c3.yaml).
+Use ESPHome 2026.10.2 or later. Reference: the reverse-engineered
+[mao-mao-yu/sense-u-ble](https://github.com/mao-mao-yu/sense-u-ble), not a
+manufacturer specification.
 
-The example's BLE Connected entity indicates successful protocol authentication
-in the existing implementation, not verified delivery of fresh readings. A
-connected state alone does not prove monitoring or alarms are working. Initial
-pairing may invalidate pairing with another client; see the project's pairing
-instructions. The baby code is sensitive and the existing component logs it.
+- After successful `70 00` authentication and the `C0` reply, send a 20-byte
+  `0xBA` request on CHAR_4 with GATT write response. Repeat every `update_interval`
+  (default 2s, minimum 1s). A stalled initialization allows read-only polling
+  after 20s; polling never begins before authentication.
+- Decode a complete snapshot of at least 12 bytes: posture [2], temperature
+  [3..4] little-endian / 10, experimental humidity [5] in percent, breath [6],
+  activity [7], signed device RSSI [8], battery [9], wearing [10] == 0x81,
+  and charge [11]. Invalid temperature/breath/battery/humidity values become NaN.
+- Snapshot temperature accepts 10 < Celsius < 50, breath < 200 and percentages
+  <= 100, matching the reference's principal validation ranges. These are
+  parsing limits, NOT medical thresholds. Zero breath is a valid value.
+- Posture 4 is sitting. Posture 5 means unavailable while charging, not a
+  position. Charge is separate: Not charging / Charging / Full / Unknown.
+- Decode combined alert modes 10 and 65 as breath + posture events. Track
+  overlapping modes separately so clearing one does not clear another.
+  No `0xF6` ACK is sent, automatically or otherwise. Unrecognized event modes
+  are logged. Alarm state stays unknown until an applicable event is received.
+- Clear readings, wearing and alarm availability on disconnect or data timeout.
+  Pro `data_fresh` specifically requires a complete BA snapshot; isolated
+  battery/alert pushes do not keep old breath/temperature values looking fresh.
+- Wait for all required notification descriptor acknowledgements before auth.
+  Pro requires CHAR_1/2/4; legacy mode retains CHAR_3. Rediscover handles after
+  every disconnect. Report pairing rejection, authentication failure, GATT
+  failures and timeout instead of staying indefinitely at Connecting.
+- Keep the original flash preference key and packed data layout. Save a complete
+  baby code before disconnecting after pairing. Never print pairing codes or raw
+  auth bytes in logs. Existing credentials are not erased on authentication failure.
+
+## Configuration and limits
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `pro_mode` | false | Enable Pro snapshots and extended event decoding. |
+| `preserve_monitoring_settings` | true for Pro, false otherwise | Skip F5/B2/B3/B0 commands, including power-switch F5 commands. Does not restore prior settings. |
+| `update_interval` | 2s | Pro polling interval, at least 1s. |
+| `data_timeout` | 30s | Must exceed update_interval. Clear data and reconnect if snapshots stop (legacy: supported measurement records). |
+| `connection_timeout` | 30s | Timeout from GATT open through authentication. |
+| `baby_code` | absent | Reuse flash code, or supply a known 12-character hex string via secrets. |
+
+The preserved-settings mode still sends `0x69`/`0x68` for first pairing, `0x70`
+for authentication and `0xC0` after authentication. Their full device-side effects
+have not been independently verified. First pairing can invalidate another
+client's pairing. Unlike the reference, this implementation intentionally retains
+the existing 10-byte `0x68` / 15-byte `0x70` and uptime timestamps because the
+user reported successful pairing with that flow. The reference uses 18 bytes and
+Unix seconds; compatibility with all Pro firmware versions is not established.
+
+The reference initializes F5/B2/B3/B0 and says it is needed for CHAR_2 alerts.
+This component does NOT assume alerts will arrive when preserving settings.
+The old F5 F2 settings chain remains available only if explicitly opted into for
+Pro; it writes hardcoded settings. Do not toggle it merely to make readings work.
+
+Humidity is present in the reverse-engineered layout but its physical meaning
+and availability need hardware verification. Device-reported RSSI may differ
+from ESP32 receiver signal strength. Unknown alarm state must not be interpreted
+as safe/no alarm. The current source is tested with ESPHome 2026.10.2; older
+ESPHome versions are not supported by these tests.
+
+## Flash and verify
+
+1. Keep the existing node name, BLE MAC, and flash pairing. Merge the `senseu`
+   options above into your current YAML or use the full example with local secrets.
+2. Fetch the latest external component (`refresh: always`) and compile/install.
+   Do not use erase-flash/factory-reset as part of this upgrade.
+3. Look for `Connected successfully!`, TX `0xC0`, TX `0xBA`, RX `0xBA` and
+   `Receiving data`. `connected` and `data_fresh` convey different stages.
+4. Compare values with the device/app in separate sessions; only one BLE client
+   can connect at a time. Test disconnected/stale behavior and charge/removed
+   states off-body. New snapshot values and alarm coverage remain unverified
+   until this hardware validation is complete.
+
+## Local checks
+
+```sh
+pip install esphome==2026.10.2 pytest
+pytest -q tests/test_schema.py
+c++ -std=c++17 -fsanitize=address,undefined -I. tests/test_protocol.cpp -o /tmp/test-protocol
+/tmp/test-protocol
+c++ -std=c++17 -Itests/stubs -I. tests/test_session.cpp components/senseu/senseu.cpp -o /tmp/test-session
+/tmp/test-session
+esphome compile tests/compile-pro.yaml
+```
+
+Fixtures are synthetic and include truncations, invalid field values, zero breath,
+signed RSSI, charging posture, overlapping alarm modes and randomized packet sizes.
+The compile config contains dummy network values and is not intended to be flashed.
+
+The session test executes the real component against a fake GATT transport and
+clock: rejected pairing, saved-code reboot, descriptor ordering, authentication,
+polling, settings preservation, overlapping alerts, data expiry and timer rollover.
+It does not simulate ESP-IDF scheduling or radio behavior.

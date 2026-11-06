@@ -20,6 +20,8 @@ CONFIG_SCHEMA = (
     cv.Schema(
         {
             cv.GenerateID(): cv.use_id(senseu),
+            cv.Optional("wearing"): binary_sensor.binary_sensor_schema(),
+            cv.Optional("data_fresh"): binary_sensor.binary_sensor_schema(entity_category="diagnostic"),
             cv.Optional(CONF_POSTURE): binary_sensor.binary_sensor_schema(),
             cv.Optional(CONF_TEMPERATURE): binary_sensor.binary_sensor_schema(),
             cv.Optional(CONF_BREATH): binary_sensor.binary_sensor_schema(),
@@ -52,3 +54,8 @@ async def to_code(config):
     if CONF_CONNECTED in config:
         sens = await binary_sensor.new_binary_sensor(config[CONF_CONNECTED])
         cg.add(parent.set_connected_sensor(sens))
+
+    for key, setter in (("wearing", parent.set_wearing), ("data_fresh", parent.set_data_fresh)):
+        if key in config:
+            sens = await binary_sensor.new_binary_sensor(config[key])
+            cg.add(setter(sens))

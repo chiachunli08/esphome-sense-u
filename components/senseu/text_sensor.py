@@ -17,6 +17,7 @@ CONFIG_SCHEMA = (
     cv.Schema(
         {
             cv.GenerateID(): cv.use_id(senseu),
+            cv.Optional("charge_status"): text_sensor.text_sensor_schema(),
             cv.Optional(CONF_POSTURE): text_sensor.text_sensor_schema(),
             cv.Optional(CONF_STATUS): text_sensor.text_sensor_schema(),
         }
@@ -35,3 +36,7 @@ async def to_code(config):
         sens = await text_sensor.new_text_sensor(config[CONF_POSTURE])
         cg.add(parent.set_posture_sensor(sens))
 
+
+    if "charge_status" in config:
+        sens = await text_sensor.new_text_sensor(config["charge_status"])
+        cg.add(parent.set_charge_status(sens))

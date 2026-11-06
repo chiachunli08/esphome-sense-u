@@ -13,7 +13,37 @@ The Base Station 2 is, apart from the temperature sensor, fully supported.
 
 ## Baby Pro (SU602)
 
-The [ESP32-C3 example](example-sense-u-pro-esp32c3.yaml) is experimental. Pairing, readings and alarms have not been verified on SU602 hardware. See the [compatibility assessment](SU602-COMPATIBILITY.md) before using it, including the effects and limits of `preserve_monitoring_settings`.
+Use [example-sense-u-pro-esp32c3.yaml](example-sense-u-pro-esp32c3.yaml) with
+ESPHome **2026.10.2 or later**. Set `pro_mode: true` to enable read-only `0xBA`
+snapshot polling (default every 2s). Legacy configs leave Pro polling disabled.
+The Pro mode defaults to `preserve_monitoring_settings: true` and does not send
+F5/B2/B3/B0 settings or F6 alert acknowledgements. It still uses the original
+pairing/authentication flow and GET_BATCH command.
+
+New optional entities: `sensor.activity`, `sensor.signal_strength` (device-reported
+RSSI), `binary_sensor.wearing`, `binary_sensor.data_fresh`, and
+`text_sensor.charge_status`. Existing breath, temperature, battery and posture
+entities are filled by snapshots. Humidity is an experimental protocol field.
+`connected` means authenticated; `data_fresh` in Pro mode means a complete snapshot
+arrived within `data_timeout` (default 30s). A timeout clears measurements and
+reconnects. Alarm entities start unknown and become unknown on disconnect, not OFF.
+
+```yaml
+senseu:
+  - id: senseu_device
+    ble_client_id: senseu_ble
+    pro_mode: true
+    preserve_monitoring_settings: true
+    update_interval: 2s
+    data_timeout: 30s
+    connection_timeout: 30s
+```
+
+Use the same BLE MAC and do not erase flash: the existing pairing key/layout is
+preserved across updates. `baby_code` is optional and must be a quoted 12-digit
+hex string if supplied. The logger no longer prints it or raw auth packets.
+See [compatibility and verification](SU602-COMPATIBILITY.md) for limitations;
+new snapshot and alert behavior still needs hardware validation.
 
 ## Getting started
 
@@ -31,12 +61,16 @@ Once you've got the basics set up, you can use on of the other provided example 
 The pairing procedure is not a pairing at the BLE level, but rather at the application level. The Sense-U generates a Baby Code that needs to be provided during initialization. 
 If you capture the relevant BLE packet on Android during pairing, you can reuse the baby code for ESPHome. You can then connect using your phone and using ESPHome, but not simultaneously.
 
-If you have multiple ESPHome devices, you can also share the baby code. 
+For multiple ESPHome devices, store a known code locally in `secrets.yaml`:
 
-  1. Pair as usual on ESPHome device #1.
-  2. Check the log for the baby code - a message similar to "Paired using baby code: 1234567890" is displayed (early during setup, make sure to capture it soon enough).
-  3. Add the provided baby_code to the ESPHome config of device #2.
-  4. To make sure that the code is remembered during updates/resets, it is recommended to add the same baby_code to device #1 once it is known.
+```yaml
+senseu_baby_code: "012345abcdef"  # illustrative only; use your device's real code
+```
+
+Then set `baby_code: !secret senseu_baby_code` under `senseu`. This version no
+longer logs pairing credentials. Existing flash-stored codes are still used;
+if no code is known, obtaining one requires a controlled pairing capture rather
+than reading the normal DEBUG log. Never publish captured credentials.
 
 ## Protocol
 

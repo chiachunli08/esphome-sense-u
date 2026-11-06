@@ -1,0 +1,72 @@
+esphome:
+  name: senseu-pro-test
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [senseu]
+logger:
+api:
+wifi:
+  ssid: test-network
+  password: test-password
+esp32_ble_tracker:
+ble_client:
+  - mac_address: AA:BB:CC:DD:EE:FF
+    id: senseu_ble
+senseu:
+  - id: baby_monitor
+    ble_client_id: senseu_ble
+    pro_mode: true
+    update_interval: 2s
+    data_timeout: 30s
+    connection_timeout: 30s
+sensor:
+  - platform: senseu
+    id: baby_monitor
+    breath_rate:
+      name: Breath
+    temperature:
+      name: Temperature
+    humidity:
+      name: Humidity
+    battery_level:
+      name: Battery
+    activity:
+      name: Activity
+    signal_strength:
+      name: Signal
+binary_sensor:
+  - platform: senseu
+    id: baby_monitor
+    connected:
+      name: Connected
+    data_fresh:
+      name: Data fresh
+    wearing:
+      name: Wearing
+    breath:
+      name: Breath alarm
+    posture:
+      name: Posture alarm
+    temperature:
+      name: Temperature alarm
+    battery:
+      name: Battery alarm
+text_sensor:
+  - platform: senseu
+    id: baby_monitor
+    posture:
+      name: Posture
+    status:
+      name: Status
+    charge_status:
+      name: Charging
+switch:
+  - platform: ble_client
+    ble_client_id: senseu_ble
+    name: BLE connection

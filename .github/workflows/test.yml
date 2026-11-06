@@ -1,0 +1,19 @@
+name: Test Sense-U component
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install esphome==2026.10.2 pytest
+      - run: pytest -q tests/test_schema.py
+      - run: c++ -std=c++17 -fsanitize=address,undefined -I. tests/test_protocol.cpp -o /tmp/test-protocol && /tmp/test-protocol
+      - run: c++ -std=c++17 -fsanitize=address,undefined -Itests/stubs -I. tests/test_session.cpp components/senseu/senseu.cpp -o /tmp/test-session && /tmp/test-session
+      - run: esphome compile tests/compile-pro.yaml

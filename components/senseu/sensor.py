@@ -28,6 +28,10 @@ CONFIG_SCHEMA = (
     cv.Schema(
         {
             cv.GenerateID(): cv.use_id(senseu),
+            cv.Optional("activity"): sensor.sensor_schema(accuracy_decimals=0),
+            cv.Optional("signal_strength"): sensor.sensor_schema(
+                unit_of_measurement="dBm", accuracy_decimals=0,
+                device_class="signal_strength", entity_category=ENTITY_CATEGORY_DIAGNOSTIC),
             cv.Optional(CONF_BREATH_RATE): sensor.sensor_schema(
                 unit_of_measurement=UNIT_PER_MINUTE,
                 device_class=DEVICE_CLASS_FREQUENCY,
@@ -73,3 +77,8 @@ async def to_code(config):
     if CONF_BATTERY_LEVEL in config:
         sens = await sensor.new_sensor(config[CONF_BATTERY_LEVEL])
         cg.add(parent.set_battery_level(sens))
+
+    for key, setter in (("activity", parent.set_activity), ("signal_strength", parent.set_signal_strength)):
+        if key in config:
+            sens = await sensor.new_sensor(config[key])
+            cg.add(setter(sens))
